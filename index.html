@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Generator BA Otomatis</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/docxtemplater/3.42.0/docxtemplater.js"></script>
+    <script src="https://unpkg.com/pizzip@3.1.4/dist/pizzip.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+    <style>
+        body { font-family: sans-serif; padding: 20px; background: #f4f7f6; }
+        .container { max-width: 700px; background: white; padding: 20px; margin: auto; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        .section { margin-bottom: 20px; border-bottom: 1px solid #eee; padding-bottom: 15px; }
+        input { display: block; width: 100%; margin: 10px 0; padding: 8px; box-sizing: border-box; }
+        .row-input { display: flex; gap: 10px; }
+        button { cursor: pointer; padding: 10px 15px; border: none; border-radius: 4px; }
+        .btn-add { background: #28a745; color: white; margin-bottom: 10px; }
+        .btn-generate { background: #007bff; color: white; width: 100%; font-size: 16px; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>Generator Berita Acara</h2>
+    
+    <div class="section">
+        <label>Nomor BA:</label>
+        <input type="text" id="nomor_ba" placeholder="Contoh: 001/BA/2026">
+        <label>Tanggal:</label>
+        <input type="date" id="tanggal">
+    </div>
+
+    <div class="section">
+        <h4>Daftar Pegawai</h4>
+        <div id="pegawai-container">
+            <div class="row-input">
+                <input type="text" class="p-nama" placeholder="Nama Pegawai">
+                <input type="text" class="p-jabatan" placeholder="Jabatan">
+            </div>
+        </div>
+        <button class="btn-add" onclick="tambahPegawai()">+ Tambah Pegawai</button>
+    </div>
+
+    <div class="section">
+        <h4>Daftar Kegiatan</h4>
+        <div id="kegiatan-container">
+            <input type="text" class="k-deskripsi" placeholder="Deskripsi Kegiatan">
+        </div>
+        <button class="btn-add" onclick="tambahKegiatan()">+ Tambah Kegiatan</button>
+    </div>
+
+    <button class="btn-generate" onclick="generateDocument()">Download Berita Acara (.docx)</button>
+</div>
+
+<script>
+    function tambahPegawai() {
+        const div = document.createElement('div');
+        div.className = 'row-input';
+        div.innerHTML = `<input type="text" class="p-nama" placeholder="Nama Pegawai">
+                         <input type="text" class="p-jabatan" placeholder="Jabatan">`;
+        document.getElementById('pegawai-container').appendChild(div);
+    }
+
+    function tambahKegiatan() {
+        const input = document.createElement('input');
+        input.className = 'k-deskripsi';
+        input.placeholder = 'Deskripsi Kegiatan';
+        document.getElementById('kegiatan-container').appendChild(input);
+    }
+
+    async function generateDocument() {
+        // 1. Ambil data dari form
+        const data = {
+            nomor_ba: document.getElementById('nomor_ba').value,
+            tanggal: document.getElementById('tanggal').value,
+            pegawai: Array.from(document.querySelectorAll('.row-input')).map(row => ({
+                nama: row.querySelector('.p-nama').value,
+                jabatan: row.querySelector('.p-jabatan').value
+            })),
+            kegiatan: Array.from(document.querySelectorAll('.k-deskripsi')).map(input => ({
+                deskripsi: input.value
+            }))
+        };
+
+        // 2. Load template .docx
+        const response = await fetch('template.docx');
+        const content = await response.arrayBuffer();
+        
+        const zip = new PizZip(content);
+        const doc = new window.docxtemplater(zip, { paragraphLoop: true, linebreaks: true });
+
+        // 3. Masukkan data ke template
+        try {
+            doc.render(data);
+        } catch (error) {
+            console.error(error);
+            alert("Terjadi kesalahan saat mengisi template.");
+            return;
+        }
+
+        // 4. Export file
+        const out = doc.getZip().generate({
+            type: "blob",
+            mimeType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        });
+        saveAs(out, `BA_${data.nomor_ba.replace(/\//g, '-')}.docx`);
+    }
+</script>
+
+</body>
+</html>
